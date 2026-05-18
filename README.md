@@ -8,7 +8,7 @@ Convert selected PDF pages to images and re-insert them, preserving the original
 uv run fuck_turnitin [--output OUTFILE] [--imageify RANGES] input.pdf
 ```
 
-- `--imageify` — comma-separated page ranges to rasterize, e.g. `0..10,11..2,4,5`
+- `--imageify` — comma-separated page ranges (1-indexed) to rasterize, e.g. `1..10,11..2,4,5`
 - `--output` — output path (default: `<input>_modified.pdf`)
 
 ## How it works

@@ -4,7 +4,6 @@ from pathlib import Path
 
 from pdf2image import convert_from_path
 from pypdf import PdfReader, PdfWriter
-from pypdf.generic import NameObject
 from reportlab.pdfgen import canvas
 
 
@@ -13,12 +12,37 @@ def _parse_pages(value: str) -> list[int]:
     for part in value.split(","):
         if ".." in part:
             start, end = part.split("..", 1)
-            start, end = int(start), int(end)
+            start, end = int(start) - 1, int(end) - 1
             step = 1 if start <= end else -1
             pages.extend(range(start, end + step, step))
         else:
-            pages.append(int(part))
+            pages.append(int(part) - 1)
     return pages
+
+
+def _copy_outlines(reader, writer, items, page_ref_to_idx, parent=None):
+    i = 0
+    while i < len(items):
+        item = items[i]
+        if isinstance(item, list):
+            i += 1
+            continue
+        page_number = page_ref_to_idx.get(item.page)
+        ff = item.font_format
+        c = item.color
+        new_parent = writer.add_outline_item(
+            title=item.title or "",
+            page_number=page_number,
+            parent=parent,
+            bold=bool(ff & 2) if ff is not None else False,
+            italic=bool(ff & 1) if ff is not None else False,
+            color=tuple(float(x) for x in c) if c is not None else None,
+        )
+        if i + 1 < len(items) and isinstance(items[i + 1], list):
+            _copy_outlines(reader, writer, items[i + 1], page_ref_to_idx, parent=new_parent)
+            i += 2
+        else:
+            i += 1
 
 
 def main() -> None:
@@ -32,7 +56,10 @@ def main() -> None:
     parser.add_argument(
         "--imageify",
         type=_parse_pages,
-        help="comma-separated page ranges to convert to images, e.g. 0..10,11..2,4,5",
+        help=(
+            "comma-separated page ranges (1-indexed) to convert to images"
+            ", e.g. 1..10,11..2,4,5"
+        ),
     )
     args = parser.parse_args()
     reader = PdfReader(args.input)
@@ -57,9 +84,10 @@ def main() -> None:
                 writer.add_page(img_reader.pages[0])
             else:
                 writer.add_page(reader.pages[i])
-        outlines = reader.root_object.get("/Outlines")
-        if outlines:
-            writer._root_object[NameObject("/Outlines")] = outlines.clone(writer)
+        outline_items = reader.outline
+        if outline_items:
+            page_ref_to_idx = {p.indirect_reference: i for i, p in enumerate(reader.pages)}
+            _copy_outlines(reader, writer, outline_items, page_ref_to_idx)
         output = args.output or str(Path(args.input).with_suffix("")) + " (fucked).pdf"
         writer.write(output)
         print(f"Saved to {output}")
