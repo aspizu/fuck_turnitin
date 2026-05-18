@@ -1,0 +1,19 @@
+[project]
+name = "fuck_turnitin"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [{ name = "Priyanshu Dangare", email = "hello@aspiz.uk" }]
+requires-python = ">=3.14"
+dependencies = [
+    "pdf2image>=1.17.0",
+    "pypdf>=6.11.0",
+    "reportlab>=4.5.1",
+]
+
+[project.scripts]
+fuck_turnitin = "fuck_turnitin:main"
+
+[build-system]
+requires = ["uv_build>=0.11.14,<0.12.0"]
+build-backend = "uv_build"
